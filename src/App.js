@@ -1,50 +1,92 @@
-import React, { Component } from "react"
-import logo from "./logo.svg"
-import "./App.css"
+import { BrowserRouter as Router, Route } from "react-router-dom";
+import React, { Component } from "react";
 
-class LambdaDemo extends Component {
-  constructor(props) {
-    super(props)
-    this.state = { loading: false, msg: null }
-  }
+// Components
+import Header from "./components/layout/Header";
+import Todos from "./components/Todos";
+import AddTodo from "./components/AddTodo";
+import About from "./components/pages/About";
 
-  handleClick = api => e => {
-    e.preventDefault()
+// Packages
+import uuid from "uuid";
+import axios from "axios";
+// Style Sheets
+import "./App.css";
 
-    this.setState({ loading: true })
-    fetch("/.netlify/functions/" + api)
-      .then(response => response.json())
-      .then(json => this.setState({ loading: false, msg: json.msg }))
-  }
-
-  render() {
-    const { loading, msg } = this.state
-
-    return (
-      <p>
-        <button onClick={this.handleClick("hello")}>{loading ? "Loading..." : "Call Lambda"}</button>
-        <button onClick={this.handleClick("async-dadjoke")}>{loading ? "Loading..." : "Call Async Lambda"}</button>
-        <br />
-        <span>{msg}</span>
-      </p>
-    )
-  }
-}
-
+// ------------------------------------------------------------------------------------------------------------------------------------
 class App extends Component {
-  render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <p>
-            Edit <code>src/App.js</code> and save to reload.
-          </p>
-          <LambdaDemo />
-        </header>
-      </div>
-    )
-  }
+    state = {
+        todos: []
+    };
+
+    componentDidMount() {
+        axios
+            .get("https://jsonplaceholder.typicode.com/todos?_limit=2")
+            .then(response => {
+                this.setState({ todos: response.data });
+            });
+    }
+    // Toggle Complete
+
+    markComplete = id => {
+        this.setState({
+            todos: this.state.todos.map(todo => {
+                if (todo.id === id) {
+                    todo.completed = !todo.completed;
+                }
+                return todo;
+            })
+        });
+    };
+    // Delete todo
+    delTodo = id => {
+        axios
+            .delete(`https://jsonplaceholder.typicode.com/todos/${id}`)
+            .then(response => {
+                this.setState({
+                    todos: [...this.state.todos.filter(todo => todo.id !== id)]
+                });
+            });
+    };
+
+    // Add Todo
+    addTodo = title => {
+        axios
+            .post("https://jsonplaceholder.typicode.com/todos", {
+                title: title,
+                completed: false
+            })
+            .then(response => {
+                this.setState({ todos: [...this.state.todos, response.data] });
+            });
+    };
+    render() {
+        console.log(this.state.todos);
+        return (
+            <Router>
+                <div className="App">
+                    <div className="container-fluid">
+                        <Header />
+                        <Route
+                            exact
+                            path="/"
+                            render={props => (
+                                <React.Fragment>
+                                    <AddTodo addTodo={this.addTodo} />
+                                    <Todos
+                                        delTodo={this.delTodo}
+                                        markComplete={this.markComplete}
+                                        todos={this.state.todos}
+                                    />
+                                </React.Fragment>
+                            )}
+                        />
+                        <Route path="/about" component={About} />
+                    </div>
+                </div>
+            </Router>
+        );
+    }
 }
 
-export default App
+export default App;
